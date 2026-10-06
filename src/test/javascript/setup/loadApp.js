@@ -19,6 +19,7 @@ const REGISTERED_IDS = [
   'app-header',
   'app-title',
   'app-subtitle',
+  'theme-toggle',
   'range-form',
   'range-from',
   'range-to',
@@ -156,20 +157,24 @@ function createFakeApi(overrides) {
 
 /**
  * Load the page and start the app against a fake API. `overrides` replaces any of the
- * fixtures by name (health, kpis, onTime, late, ticketsByCategory, vendors, failing).
+ * fixtures by name (health, kpis, onTime, late, ticketsByCategory, vendors, failing);
+ * `storage` is passed to initApp in place of localStorage. Every call starts with no
+ * theme on <html> and an empty localStorage.
  * Returns { app, api, document, module } once the initial load has finished.
  */
 async function loadApp(overrides) {
   const html = readIndexHtml();
   const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
   document.body.innerHTML = bodyMatch[1].replace(/<script[^>]*><\/script>/g, '');
+  document.documentElement.removeAttribute('data-theme');
+  window.localStorage.clear();
 
   const api = createFakeApi(overrides);
   global.fetch = api.fetchImpl;
 
   jest.resetModules();
   const mod = require(APP_PATH);
-  const app = mod.initApp(document, api.fetchImpl);
+  const app = mod.initApp(document, api.fetchImpl, overrides && overrides.storage);
   await app.ready;
   return { app, api, document, module: mod };
 }

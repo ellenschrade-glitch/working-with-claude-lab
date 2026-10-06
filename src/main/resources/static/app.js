@@ -13,6 +13,9 @@
   var DEFAULT_PRESET_DAYS = 30;
   var LATE_LIMIT = 20;
   var SVG_NS = 'http://www.w3.org/2000/svg';
+  var THEME_KEY = 'ops-theme';
+  var DEFAULT_THEME = 'dark';
+  var THEME_LABELS = { light: 'Light theme', dark: 'Dark theme' };
 
   // ---------- API client ----------
 
@@ -104,10 +107,15 @@
 
   // ---------- App ----------
 
-  function initApp(document, fetchImpl) {
+  /**
+   * storage defaults to the page's localStorage. It may be missing or throw (some
+   * private modes); the theme then still works, it just is not remembered.
+   */
+  function initApp(document, fetchImpl, storage) {
     var api = createApi(fetchImpl);
 
     var els = {
+      themeToggle: document.getElementById('theme-toggle'),
       status: document.getElementById('status-line'),
       form: document.getElementById('range-form'),
       from: document.getElementById('range-from'),
@@ -332,6 +340,51 @@
       var range = applyPreset(days, state.today);
       return load(range.from, range.to);
     }
+
+    // ---------- Theme (TODO-231) ----------
+
+    function themeStorage() {
+      if (storage) {
+        return storage;
+      }
+      try {
+        return document.defaultView && document.defaultView.localStorage;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    /** The saved theme if it is a known one, otherwise dark. The OS setting is ignored. */
+    function savedTheme() {
+      try {
+        var store = themeStorage();
+        var value = store && store.getItem(THEME_KEY);
+        return THEME_LABELS.hasOwnProperty(value) ? value : DEFAULT_THEME;
+      } catch (err) {
+        return DEFAULT_THEME;
+      }
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      els.themeToggle.textContent = THEME_LABELS[theme === 'dark' ? 'light' : 'dark'];
+    }
+
+    function toggleTheme() {
+      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try {
+        var store = themeStorage();
+        if (store) {
+          store.setItem(THEME_KEY, next);
+        }
+      } catch (err) {
+        // Not remembered, but the switch itself still happened.
+      }
+    }
+
+    applyTheme(savedTheme());
+    els.themeToggle.addEventListener('click', toggleTheme);
 
     els.form.addEventListener('submit', function (event) {
       event.preventDefault();
