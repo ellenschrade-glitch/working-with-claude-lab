@@ -1,6 +1,7 @@
 package com.marlowefinch.ops;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,7 +30,13 @@ public class DeliveryController {
     @GetMapping("/api/deliveries/late")
     public List<LateDelivery> late(@RequestParam(required = false) String from,
                                    @RequestParam(required = false) String to,
-                                   @RequestParam(required = false, defaultValue = "" + DEFAULT_LIMIT) int limit) {
-        return repository.lateDeliveries(DateRange.resolve(from, to, clock), limit);
+                                   @RequestParam(required = false, defaultValue = "" + DEFAULT_LIMIT) String limit) {
+        List<String> errors = new ArrayList<>();
+        DateRange range = DateRange.resolve(from, to, clock, errors);
+        int max = DateRange.parseLimit(limit, DEFAULT_LIMIT, errors);
+        if (!errors.isEmpty()) {
+            throw new InvalidRequestException(errors);
+        }
+        return repository.lateDeliveries(range, max);
     }
 }
